@@ -66,6 +66,44 @@ def get_n3dgs_list_per_rank_from_log(folder):
                 stats[f"n_3dgs_rk={rk}"].append(n_3dgs)
     return stats, iterations
 
+def get_loss_list_per_rank_from_log(folder):
+    suffixes = get_suffix_in_folder(folder)
+    stats = {}
+    iterations = []
+    start_iteration = 0
+    for rk, suffix in enumerate(suffixes):
+        file = f"python_{suffix}.log"
+        file_path = os.path.join(folder, file)
+        with open(file_path, "r") as f:
+            lines = f.readlines()
+        stats[f"n_3dgs_rk={rk}"] = []
+        for line in lines:
+            if line.startswith("start_checkpoint:"):
+                if "checkpoints/" in line:
+                    start_iteration = int(line.split("checkpoints/")[1].split("/")[0])
+                else:
+                    start_iteration = 0
+
+            # xyz shape: torch.Size([182686, 3])
+            if line.startswith("xyz shape:"):
+                # example
+                # xyz shape: torch.Size([182686, 3])
+                n_3dgs = int(line.split("[")[1].split(",")[0])
+                stats[f"n_3dgs_rk={rk}"].append(n_3dgs)
+                if rk == 0:
+                    iterations.append(start_iteration)
+
+            if "Now num of 3dgs:" in line:
+                # example
+                # iteration[600,601) densify_and_prune. Now num of 3dgs: 183910. Now Memory usage: 0.23658323287963867 GB. Max Memory usage: 0.399813175201416 GB.
+                iteration = int(line.split("iteration[")[1].split(",")[0])
+                n_3dgs = int(line.split("Now num of 3dgs: ")[1].split(".")[0])
+                if rk == 0:
+                    iterations.append(iteration)
+                stats[f"n_3dgs_rk={rk}"].append(n_3dgs)
+    return stats, iterations
+
+
 
 def get_n3dgs_list_from_log(folder):
     rk2n3dgs, iterations = get_n3dgs_list_per_rank_from_log(folder)
@@ -105,15 +143,20 @@ def draw_n3dgs_metrics(folders, save_folder):
 
     all_results = []
     all_n3dgs = []
+    all_iterations = []
     all_points = []
+    all_curves = []
     for folder in folders:
         result = get_results_test(folder)
         if result is None:
             continue
         n3dgs = get_final_n3dgs_from_log(folder)
+        n3dgs_lists, its = get_n3dgs_list_from_log(folder)
+        expe_name = folder.split("/")[-1]
+        all_curves.append((its, n3dgs_lists, "Experient: " + expe_name))
         # all_results.append(get_results_test(folder))
         # all_n3dgs.append(get_final_n3dgs_from_log(folder))
-        expe_name = folder.split("/")[-1]
+        
         # if expe_name == "rub_16g_7_c2":
         #     expe_name = "rub_16g_7"
         point = (n3dgs, result, "Experiment: " + expe_name)
@@ -143,7 +186,7 @@ def draw_n3dgs_metrics(folders, save_folder):
         df, os.path.join(save_folder, "n3dgs_metrics.tex"), drop_first_column=False
     )
 
-    fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(30, 10))
+    fig, ax = plt.subplots(nrows=4, ncols=1, figsize=(20, 20))
     fig.subplots_adjust(hspace=0.5)
 
     ax[0].set_title("PSNR vs. n_of_3dgs")
@@ -170,7 +213,17 @@ def draw_n3dgs_metrics(folders, save_folder):
         ax[2].scatter(point[0], point[1]["LPIPS"], label=point[2])
     ax[2].legend()
 
+    ax[3].set_title("Iteration of n_of_3dgs")
+    ax[3].set_xlabel("iterations")
+    ax[3].set_ylabel("log n_of_3dgs")
+    ax[3].set_yscale("log")
+    for curve in all_curves:
+        ax[3].plot(curve[0], curve[1], label=curve[2])
+    ax[3].legend()
+    plt.plot()
+
     plt.savefig(os.path.join(save_folder, "n3dgs_metrics.png"))
+
 
 
 def draw_n3dgs_metrics_table_for_paper(folder):
@@ -434,20 +487,22 @@ def plot_bicycle():
 
 
 def plot_matrixcity_blockall():
-    plot_mat_folder = "/pscratch/sd/j/jy-nyu/last_scripts/plot_mat/"
+    plot_mat_folder = "/cpfs01/user/liaozimu/code1/Grendel-GS/logs/matrix_city1/"
     if not os.path.exists(plot_mat_folder):
         os.makedirs(plot_mat_folder)
-    matrixcity_blockall_folder = "/pscratch/sd/j/jy-nyu/last_scripts/mball2/"
+    matrixcity_blockall_folder = "/cpfs01/user/liaozimu/code1/Grendel-GS/output/"
 
     # list all experiments folders in the rubble_expe_folder
     matrixcity_blockall_expes = []
     for expe in os.listdir(matrixcity_blockall_folder):
+        if expe.split('_')[0] == 'bike':
+            continue
         expe_folder = os.path.join(matrixcity_blockall_folder, expe)
         if os.path.isdir(expe_folder):
             matrixcity_blockall_expes.append(expe_folder)
 
-    # draw_n3dgs_metrics(matrixcity_blockall_expes, plot_mat_folder)
-    # draw_n3dgs_metrics_table_for_paper(plot_mat_folder)
+    draw_n3dgs_metrics(matrixcity_blockall_expes, plot_mat_folder)
+    draw_n3dgs_metrics_table_for_paper(plot_mat_folder)
 
     # save the n3dgs at the beginning and at the end, in file
     n3dgs = {}
@@ -1041,7 +1096,7 @@ if __name__ == "__main__":
     # plot_bicycle()
     # plot_mip360()
     # merge_MipNeRF360_table_for_paper()
-    # plot_matrixcity_blockall()
+    plot_matrixcity_blockall()
     # plot_tandb()
     # merge_tandb_table_for_paper()
     # plot_tandb_train_scalability()

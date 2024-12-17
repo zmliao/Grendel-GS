@@ -192,9 +192,9 @@ class DebugParams(ParamGroup):
         self.stop_update_param = (
             False  # stop updating parameters. No optimizer.step() will be called.
         )
-        self.time_image_loading = False  # Log image loading time.
+        self.time_image_loading = True  # Log image loading time.
 
-        self.nsys_profile = False  # profile with nsys.
+        self.nsys_profile = True # profile with nsys.
         self.drop_initial_3dgs_p = 0.0  # profile with nsys.
         self.drop_duplicate_gaussians_coeff = 1.0
 

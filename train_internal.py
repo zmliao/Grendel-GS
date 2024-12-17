@@ -29,6 +29,7 @@ import torch.distributed as dist
 from densification import densification, gsplat_densification
 
 
+
 def training(dataset_args, opt_args, pipe_args, args, log_file):
 
     # Init auxiliary tools

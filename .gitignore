@@ -18,3 +18,8 @@ __pycache__
 scripts/
 data
 results
+logs
+*.nsys-rep
+*.sqlite
+
+

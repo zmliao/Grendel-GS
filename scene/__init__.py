@@ -54,6 +54,7 @@ class Scene:
                 args.source_path, args.images, args.eval, args.llffhold
             )
         elif "matrixcity" in args.source_path:  # This is for matrixcity
+            print("Assuming MatrixCity Dataset")
             scene_info = sceneLoadTypeCallbacks["City"](
                 args.source_path,
                 args.random_background,

@@ -287,7 +287,7 @@ def readCamerasFromTransformsCity(
 
         for idx, frame in enumerate(frames):
             # cam_name = os.path.join(path, frame["file_path"] + extension)
-            cam_name = frame["file_path"]
+            cam_name = os.path.join(path,frame["file_path"])
             if not os.path.exists(cam_name):
                 print(f"File {cam_name} not found, skipping...")
                 continue
@@ -358,7 +358,7 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
 
         frames = contents["frames"]
         for idx, frame in enumerate(frames):
-            cam_name = os.path.join(path, frame["file_path"] + extension)
+            cam_name = os.path.join(path, frame["file_path"])
 
             # NeRF 'transform_matrix' is a camera-to-world transform
             c2w = np.array(frame["transform_matrix"])
@@ -461,7 +461,7 @@ def readCityInfo(
     llffhold=8,
     undistorted=False,
 ):
-
+    print("PATH:", path)
     train_json_path = os.path.join(path, f"transforms_train.json")
     test_json_path = os.path.join(path, f"transforms_test.json")
     print(
