@@ -44,7 +44,7 @@ def training(dataset_args, opt_args, pipe_args, args, log_file):
     gaussians = GaussianModel(dataset_args.sh_degree)
 
     with torch.no_grad():
-        scene = Scene(args, gaussians)
+        scene = Scene(args, gaussians, blockall=args.block_all)
         gaussians.training_setup(opt_args)
 
         if args.start_checkpoint != "":

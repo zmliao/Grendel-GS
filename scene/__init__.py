@@ -26,7 +26,7 @@ class Scene:
     gaussians: GaussianModel
 
     def __init__(
-        self, args, gaussians: GaussianModel, load_iteration=None, shuffle=True
+        self, args, gaussians: GaussianModel, load_iteration=None, shuffle=True, blockall=False
     ):
         """b
         :param path: Path to colmap scene main folder.
@@ -55,7 +55,8 @@ class Scene:
             )
         elif "matrixcity" in args.source_path:  # This is for matrixcity
             print("Assuming MatrixCity Dataset")
-            scene_info = sceneLoadTypeCallbacks["City"](
+            name = "AllCity" if blockall else "City"
+            scene_info = sceneLoadTypeCallbacks[name](
                 args.source_path,
                 args.random_background,
                 args.white_background,

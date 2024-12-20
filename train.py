@@ -39,8 +39,8 @@ if __name__ == "__main__":
     dist_p = DistributionParams(parser)
     bench_p = BenchmarkParams(parser)
     debug_p = DebugParams(parser)
+    parser.add_argument("--block_all", default=False, type=bool)
     args = parser.parse_args(sys.argv[1:])
-
     # Set up distributed training
     init_distributed(args)
 

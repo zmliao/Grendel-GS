@@ -4462,7 +4462,13 @@ if __name__ == "__main__":
     #     "/pscratch/sd/j/jy-nyu/mat_expes/mat_ball2_16g_dp_2"
     # ]
     # loss_and_3dgs_curves(mat_ball2_folders)
+    folders = [
+        "/cpfs01/user/liaozimu/code1/Grendel-GS/output/small_aerial_500kit_200kdensify_n1d2",
+        "/cpfs01/user/liaozimu/code1/Grendel-GS/output/small_aerial_500kit_200kdensify_n1d4",
+        "/cpfs01/user/liaozimu/code1/Grendel-GS/output/small_aerial_500kit_200kdensify_n1d8",
+    ]
 
-    loss_and_3dgs_curves(["/pscratch/sd/j/jy-nyu/final_expes/rub_16g_1_b16/"])
+    # loss_and_3dgs_curves(["/pscratch/sd/j/jy-nyu/final_expes/rub_16g_1_b16/"])
+    loss_and_3dgs_curves(folders=folders)
 
     pass

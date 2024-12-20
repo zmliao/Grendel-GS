@@ -348,6 +348,105 @@ def readCamerasFromTransformsCity(
                 break
     return cam_infos
 
+def readCamerasFromTransformsAllCity(
+    path,
+    transformsfile,
+    random_background,
+    white_background,
+    extension=".png",
+    undistorted=False,
+    is_debug=False,
+):
+    cam_infos = []
+    if undistorted:
+        print("Undistortion the images!!!")
+        # TODO: Support undistortion here. Please refer to octree-gs implementation.
+    with open(os.path.join(path, transformsfile)) as json_file:
+        contents = json.load(json_file)
+        try:
+            fovx = contents["camera_angle_x"]
+        except:
+            fovx = None
+
+        frames = contents["frames"]
+        # check if filename already contain postfix
+        if frames[0]["file_path"].split(".")[-1] in ["jpg", "jpeg", "JPG", "png"]:
+            extension = ""
+
+        c2ws = np.array([frame["transform_matrix"] for frame in frames])
+
+        Ts = c2ws[:, :3, 3]
+
+        ct = 0
+
+        progress_bar = tqdm(frames, desc="Loading dataset")
+
+        for idx, frame in enumerate(frames):
+            # cam_name = os.path.join(path, frame["file_path"] + extension)
+            # cam_name = os.path.join(path,frame["file_path"])
+            cam_name = frame["file_path"]
+            
+            if not os.path.exists(cam_name):
+                cam_name = os.path.join("/nas/shared/pjlab_lingjun_landmarks/pjlab_lingjun_landmarks_hdd/yumulin_group/nerf_data/matrixcity/small_city/aerial/test/.cache", frame["file_path"])
+            if not os.path.exists(cam_name):
+                print(f"File {cam_name} not found, skipping...")
+                continue
+            # NeRF 'transform_matrix' is a camera-to-world transform
+            c2w = np.array(frame["transform_matrix"])
+
+            if idx % 10 == 0:
+                progress_bar.set_postfix({"num": f"{ct}/{len(frames)}"})
+                progress_bar.update(10)
+            if idx == len(frames) - 1:
+                progress_bar.close()
+
+            ct += 1
+            # change from OpenGL/Blender camera axes (Y up, Z back) to COLMAP (Y down, Z forward)
+            c2w[:3, 1:3] *= -1
+
+            # get the world-to-camera transform and set R, T
+            w2c = np.linalg.inv(c2w)
+
+            R = np.transpose(
+                w2c[:3, :3]
+            )  # R is stored transposed due to 'glm' in CUDA code
+            T = w2c[:3, 3]
+
+            image_path = os.path.join(path, cam_name)
+            image_name = cam_name[-17:]  # Path(cam_name).stem
+            image = Image.open(image_path)
+
+            if fovx is not None:
+                fovy = focal2fov(fov2focal(fovx, image.size[0]), image.size[1])
+                FovY = fovy
+                FovX = fovx
+            else:
+                # given focal in pixel unit
+                FovY = focal2fov(frame["fl_y"], image.size[1])
+                FovX = focal2fov(frame["fl_x"], image.size[0])
+
+            cam_infos.append(
+                CameraInfo(
+                    uid=idx,
+                    R=R,
+                    T=T,
+                    FovY=FovY,
+                    FovX=FovX,
+                    image=None,
+                    image_path=image_path,
+                    image_name=image_name,
+                    width=image.size[0],
+                    height=image.size[1],
+                )
+            )
+
+            # release memory
+            image.close()
+            image = None
+
+            if is_debug and idx > 50:
+                break
+    return cam_infos
 
 def readCamerasFromTransforms(path, transformsfile, white_background, extension=".png"):
     cam_infos = []
@@ -506,9 +605,62 @@ def readCityInfo(
     )
     return scene_info
 
+def readAllCityInfo(
+    path,
+    random_background,
+    white_background,
+    extension=".tif",
+    llffhold=8,
+    undistorted=False,
+):
+    print("PATH:", path)
+    train_json_path = os.path.join(path, f"transforms_train.json")
+    test_json_path = os.path.join(path, f"transforms_test.json")
+    print(
+        "Reading Training Transforms from {} {}".format(train_json_path, test_json_path)
+    )
+
+    train_cam_infos = readCamerasFromTransformsAllCity(
+        path,
+        train_json_path,
+        random_background,
+        white_background,
+        extension,
+        undistorted,
+    )
+    test_cam_infos = readCamerasFromTransformsAllCity(
+        path,
+        test_json_path,
+        random_background,
+        white_background,
+        extension,
+        undistorted,
+    )
+    print("Load Cameras(train, test): ", len(train_cam_infos), len(test_cam_infos))
+
+    nerf_normalization = getNerfppNorm(train_cam_infos)
+
+    ply_path = glob.glob(os.path.join(path, "*.ply"))[0]
+    if os.path.exists(ply_path):
+        try:
+            pcd = fetchPly(ply_path)
+        except:
+            raise ValueError("must have tiepoints!")
+    else:
+        assert False, "No ply file found!"
+
+    scene_info = SceneInfo(
+        point_cloud=pcd,
+        train_cameras=train_cam_infos,
+        test_cameras=test_cam_infos,
+        nerf_normalization=nerf_normalization,
+        ply_path=ply_path,
+    )
+    return scene_info
 
 sceneLoadTypeCallbacks = {
     "Colmap": readColmapSceneInfo,
     "Blender": readNerfSyntheticInfo,
     "City": readCityInfo,
+    "AllCity": readAllCityInfo
 }
